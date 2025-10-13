@@ -141,6 +141,9 @@ class SyncDataService {
       if (result['hasData'] == true) {
         uploadFutures.add(result['uploadFuture']);
         uploadData.add(result['data']);
+        if (result['uploadDetailsFuture'] != null) {
+          uploadFutures.add(result['uploadDetailsFuture']);
+        }
       }
     }
 

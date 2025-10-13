@@ -381,6 +381,12 @@ class WebSocketService {
           final success = json['success'] == true;
           onFeedbackResult?.call(success);
           break;
+        case 'error':
+          final errorText = json['text'] ?? '服務器發生錯誤';
+          print('❌ WebSocket 收到錯誤訊息: $errorText');
+          // 🔥 復用現有的服務器錯誤處理邏輯
+          onHttpServerError?.call(errorText, 500);
+          break;
         default:
           print('🔔 未處理的 WebSocket 訊息: ${json['type']}');
       }

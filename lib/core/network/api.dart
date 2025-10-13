@@ -33,22 +33,22 @@ class Api {
   static const String gpsSet = "gpslog/set";
 
   ///-------- aws api 正式機
-//   static const String awsUrl =
-//       "https://4dyojbdrcb.execute-api.us-east-1.amazonaws.com/prod/";
-//   static const String awsUrl2 =
-//       "https://mraofolcb5.execute-api.us-east-1.amazonaws.com/prod/";
-
-//   static const String socketUrl =
-//       "wss://ssubii43ya.execute-api.us-east-1.amazonaws.com/prod";
-
-  ///-------- aws api 測試機
   static const String awsUrl =
-      "https://ti9u7loe46.execute-api.us-east-1.amazonaws.com/dev/";
+      "https://4dyojbdrcb.execute-api.us-east-1.amazonaws.com/prod/";
   static const String awsUrl2 =
       "https://mraofolcb5.execute-api.us-east-1.amazonaws.com/prod/";
 
   static const String socketUrl =
-      "wss://t0m6tkob0i.execute-api.us-east-1.amazonaws.com/dev";
+      "wss://ssubii43ya.execute-api.us-east-1.amazonaws.com/prod";
+
+  ///-------- aws api 測試機
+  // static const String awsUrl =
+  //     "https://ti9u7loe46.execute-api.us-east-1.amazonaws.com/dev/";
+  // static const String awsUrl2 =
+  //     "https://mraofolcb5.execute-api.us-east-1.amazonaws.com/prod/";
+
+  // static const String socketUrl =
+  //     "wss://t0m6tkob0i.execute-api.us-east-1.amazonaws.com/dev";
 
   static const String chatHistory = "chat-history";
   static const String getPressure = "stress/analyze";
