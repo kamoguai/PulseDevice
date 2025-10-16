@@ -269,9 +269,6 @@ class GlobalController extends GetxController {
       if (st is int) {
         bluetoothState = st;
         print("📱 使用 int 格式：$bluetoothState");
-      } else if (st is Map && st.containsKey('bluetoothStateChange')) {
-        bluetoothState = st['bluetoothStateChange'];
-        print("📱 使用 Map 格式：$bluetoothState");
       } else {
         print("❌ 未知的藍牙狀態數據格式：$st");
         return;
@@ -725,7 +722,6 @@ class GlobalController extends GetxController {
           final log = "[BackgroundFetch] Event received: $taskId";
           print(log);
           await logToDisk(log);
-          await apiService.sendLog(json: log, logType: "DEBUG");
           await safeRunSync(); // 你自己的任務邏輯
         } catch (e, st) {
           final errLog = "❌ Error: $e\n$st";
@@ -774,7 +770,6 @@ class GlobalController extends GetxController {
           isBleConnect.value = true;
 
           initFunc();
-          await apiService.sendLog(json: "藍牙連線成功", logType: "DEBUG");
         }
         break;
       case 0:
@@ -786,7 +781,6 @@ class GlobalController extends GetxController {
           // NotificationService().showDeviceDisconnectedNotification();
           stopForegroundTask();
         }
-        await apiService.sendLog(json: "藍牙連線中斷", logType: "WARN");
         break;
     }
   }

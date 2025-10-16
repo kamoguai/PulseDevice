@@ -71,7 +71,7 @@ class HealthDataSyncService {
                     "步數數據": listJson,
                   };
                   String jsonStr = jsonEncode(wrapperdJson);
-                  apiService.sendLog(json: jsonStr, logType: "INFO");
+
                   printLongText("步數數據：$jsonStr");
                   await stepService.syncStepData(
                       userId: _userId!, sdkData: sdkList);
@@ -92,7 +92,7 @@ class HealthDataSyncService {
                   };
 
                   String jsonStr = jsonEncode(wrapperdJson);
-                  apiService.sendLog(json: jsonStr, logType: "INFO");
+
                   printLongText("睡眠數據：$jsonStr");
                   await sleepService.syncSleepData(
                       userId: _userId!, sdkData: sdkList);
@@ -115,7 +115,7 @@ class HealthDataSyncService {
                   };
 
                   String jsonStr = jsonEncode(wrapperdJson);
-                  apiService.sendLog(json: jsonStr, logType: "INFO");
+
                   printLongText("心率數據：$jsonStr");
                   await heartRateService.syncHeartRateData(
                       userId: _userId!,
@@ -139,7 +139,7 @@ class HealthDataSyncService {
                   };
 
                   String jsonStr = jsonEncode(wrapperdJson);
-                  apiService.sendLog(json: jsonStr, logType: "INFO");
+
                   printLongText("血壓數據：$jsonStr");
                   await bloodPressureService.syncBloodPressureData(
                       userId: _userId!,
@@ -163,7 +163,7 @@ class HealthDataSyncService {
                   };
 
                   String jsonStr = jsonEncode(wrapperdJson);
-                  apiService.sendLog(json: jsonStr, logType: "INFO");
+
                   printLongText("合併數據：$jsonStr");
                   await combinedDataService.syncCombinedData(
                       userId: _userId!,
@@ -196,7 +196,6 @@ class HealthDataSyncService {
     } catch (e) {
       // 錯誤處理，例如記錄日誌
       print('資料同步錯誤: $e');
-      apiService.sendLog(json: '資料同步錯誤: $e', logType: "ERROR");
     }
   }
 

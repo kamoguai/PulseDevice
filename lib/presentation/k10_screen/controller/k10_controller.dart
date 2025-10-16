@@ -96,6 +96,7 @@ class K10Controller extends GetxController {
         LoadingHelper.hide();
       }
     } catch (e) {
+      print(e);
       LoadingHelper.hide();
       rethrow;
     }
