@@ -191,6 +191,14 @@ class K82Controller extends GetxController with WidgetsBindingObserver {
             parsedDetail =
                 data.map((e) => SleepDetailData.fromJson(e)).toList();
           }
+
+          deepCount.value =
+              parsedDetail.where((e) => e.sleepType == 241).length;
+          lightCount.value =
+              parsedDetail.where((e) => e.sleepType == 242).length;
+          remCount.value = parsedDetail.where((e) => e.sleepType == 243).length;
+          awakeCount.value =
+              parsedDetail.where((e) => e.sleepType == 244).length;
           //   /// 直接將detail數據轉為橫條圖
           for (var dic in parsedDetail) {
             switch (dic.sleepType) {

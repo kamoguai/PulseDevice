@@ -137,8 +137,8 @@ class SleepDetailData {
 
   factory SleepDetailData.fromJson(Map<String, dynamic> json) {
     return SleepDetailData(
-      userID: json['userID'],
-      startTimestamp: json['starttimestamp'],
+      userID: json['userId'],
+      startTimestamp: json['start_time_stamp'],
       duration: json['duration'],
       sleepType: json['sleepType'],
       typeName: json['typeName'],
