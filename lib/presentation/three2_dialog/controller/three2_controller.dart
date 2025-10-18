@@ -2,10 +2,10 @@ import 'package:pulsedevice/core/global_controller.dart';
 import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
 import 'package:pulsedevice/core/network/api.dart';
 import 'package:pulsedevice/core/network/api_service.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:pulsedevice/core/utils/dialog_utils.dart';
 import 'package:pulsedevice/core/utils/loading_helper.dart';
 import 'package:pulsedevice/core/utils/snackbar_helper.dart';
-import 'package:yc_product_plugin/yc_product_plugin.dart';
 import '../../../core/app_export.dart';
 import '../models/three2_model.dart';
 
@@ -63,6 +63,6 @@ class Three2Controller extends GetxController {
 
   /// 斷開藍牙
   Future<void> blueToolDisconnect() async {
-    await YcProductPlugin().disconnectDevice();
+    await YcDeviceService.disconnectDeviceStatic();
   }
 }

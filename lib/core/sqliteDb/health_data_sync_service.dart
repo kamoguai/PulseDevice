@@ -10,6 +10,7 @@ import 'package:pulsedevice/core/hiveDb/heart_rate_setting_storage.dart';
 import 'package:pulsedevice/core/hiveDb/pressure_setting.dart';
 import 'package:pulsedevice/core/hiveDb/pressure_setting_storage.dart';
 import 'package:pulsedevice/core/network/api_service.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:pulsedevice/core/sqliteDb/blood_pressure_data_service.dart';
 import 'package:pulsedevice/core/sqliteDb/combined_data_service.dart';
 import 'package:pulsedevice/core/sqliteDb/heart_rate_data_service.dart';
@@ -49,147 +50,146 @@ class HealthDataSyncService {
 
   ///------ 同步裝置健康數據到db ------
   Future<void> fetchAndStoreData() async {
+    final ycDeviceService = YcDeviceService.instance;
     if (_userId == null) {
       print('❌ 無 userId，取消同步');
       return;
     }
     try {
       for (final dataType in healthDataTypes) {
-        final result = await YcProductPlugin().queryDeviceHealthData(dataType);
-        if (result?.statusCode == PluginState.succeed) {
-          final list = result?.data ?? [];
-          if (list.isNotEmpty) {
-            switch (dataType) {
-              case HealthDataType.step:
-                final stepService = StepDataService(_db);
-                if (list.last is StepDataInfo) {
-                  final sdkList = list.cast<StepDataInfo>();
-                  final listJson = sdkList
-                      .map((e) => parseSdkDataString(e.toString()))
-                      .toList();
-                  final wrapperdJson = {
-                    "步數數據": listJson,
-                  };
-                  String jsonStr = jsonEncode(wrapperdJson);
+        final result = await ycDeviceService.queryDeviceHealthData(dataType);
+        final list = result ?? [];
+        if (list.isNotEmpty) {
+          switch (dataType) {
+            case HealthDataType.step:
+              final stepService = StepDataService(_db);
+              if (list.last is StepDataInfo) {
+                final sdkList = list.cast<StepDataInfo>();
+                final listJson = sdkList
+                    .map((e) => parseSdkDataString(e.toString()))
+                    .toList();
+                final wrapperdJson = {
+                  "步數數據": listJson,
+                };
+                String jsonStr = jsonEncode(wrapperdJson);
 
-                  printLongText("步數數據：$jsonStr");
-                  await stepService.syncStepData(
-                      userId: _userId!, sdkData: sdkList);
-                  print("步數數據寫入成功");
-                  //// 寫入成功後刪除戒指數據
-                  await deleteDeviceData(HealthDataType.step);
-                }
-                break;
-              case HealthDataType.sleep:
-                final sleepService = SleepDataService(_db);
-                if (list.last is SleepDataInfo) {
-                  final sdkList = list.cast<SleepDataInfo>();
-                  final listJson = sdkList
-                      .map((e) => parseSdkDataString(e.toString()))
-                      .toList();
-                  final wrapperdJson = {
-                    "睡眠數據": listJson,
-                  };
+                printLongText("步數數據：$jsonStr");
+                await stepService.syncStepData(
+                    userId: _userId!, sdkData: sdkList);
+                print("步數數據寫入成功");
+                //// 寫入成功後刪除戒指數據
+                await deleteDeviceData(HealthDataType.step);
+              }
+              break;
+            case HealthDataType.sleep:
+              final sleepService = SleepDataService(_db);
+              if (list.last is SleepDataInfo) {
+                final sdkList = list.cast<SleepDataInfo>();
+                final listJson = sdkList
+                    .map((e) => parseSdkDataString(e.toString()))
+                    .toList();
+                final wrapperdJson = {
+                  "睡眠數據": listJson,
+                };
 
-                  String jsonStr = jsonEncode(wrapperdJson);
+                String jsonStr = jsonEncode(wrapperdJson);
 
-                  printLongText("睡眠數據：$jsonStr");
-                  await sleepService.syncSleepData(
-                      userId: _userId!, sdkData: sdkList);
+                printLongText("睡眠數據：$jsonStr");
+                await sleepService.syncSleepData(
+                    userId: _userId!, sdkData: sdkList);
 
-                  print("睡眠數據寫入成功");
-                  //// 寫入成功後刪除戒指數據
-                  await deleteDeviceData(HealthDataType.sleep);
-                }
+                print("睡眠數據寫入成功");
+                //// 寫入成功後刪除戒指數據
+                await deleteDeviceData(HealthDataType.sleep);
+              }
 
-                break;
-              case HealthDataType.heartRate:
-                final heartRateService = HeartRateDataService(_db);
-                if (list.last is HeartRateDataInfo) {
-                  final sdkList = list.cast<HeartRateDataInfo>();
-                  final listJson = sdkList
-                      .map((e) => parseSdkDataString(e.toString()))
-                      .toList();
-                  final wrapperdJson = {
-                    "心率數據": listJson,
-                  };
+              break;
+            case HealthDataType.heartRate:
+              final heartRateService = HeartRateDataService(_db);
+              if (list.last is HeartRateDataInfo) {
+                final sdkList = list.cast<HeartRateDataInfo>();
+                final listJson = sdkList
+                    .map((e) => parseSdkDataString(e.toString()))
+                    .toList();
+                final wrapperdJson = {
+                  "心率數據": listJson,
+                };
 
-                  String jsonStr = jsonEncode(wrapperdJson);
+                String jsonStr = jsonEncode(wrapperdJson);
 
-                  printLongText("心率數據：$jsonStr");
-                  await heartRateService.syncHeartRateData(
-                      userId: _userId!,
-                      sdkData:
-                          sdkList); // await heartRateService.insertHeartRateDataIfNotExists(companion);
-                  print("心率數據寫入成功");
-                  //// 寫入成功後刪除戒指數據
-                  await deleteDeviceData(HealthDataType.heartRate);
-                }
+                printLongText("心率數據：$jsonStr");
+                await heartRateService.syncHeartRateData(
+                    userId: _userId!,
+                    sdkData:
+                        sdkList); // await heartRateService.insertHeartRateDataIfNotExists(companion);
+                print("心率數據寫入成功");
+                //// 寫入成功後刪除戒指數據
+                await deleteDeviceData(HealthDataType.heartRate);
+              }
 
-                break;
-              case HealthDataType.bloodPressure:
-                final bloodPressureService = BloodPressureDataService(_db);
-                if (list.last is BloodPressureDataInfo) {
-                  final sdkList = list.cast<BloodPressureDataInfo>();
-                  final listJson = sdkList
-                      .map((e) => parseSdkDataString(e.toString()))
-                      .toList();
-                  final wrapperdJson = {
-                    "血壓數據": listJson,
-                  };
+              break;
+            case HealthDataType.bloodPressure:
+              final bloodPressureService = BloodPressureDataService(_db);
+              if (list.last is BloodPressureDataInfo) {
+                final sdkList = list.cast<BloodPressureDataInfo>();
+                final listJson = sdkList
+                    .map((e) => parseSdkDataString(e.toString()))
+                    .toList();
+                final wrapperdJson = {
+                  "血壓數據": listJson,
+                };
 
-                  String jsonStr = jsonEncode(wrapperdJson);
+                String jsonStr = jsonEncode(wrapperdJson);
 
-                  printLongText("血壓數據：$jsonStr");
-                  await bloodPressureService.syncBloodPressureData(
-                      userId: _userId!,
-                      sdkData:
-                          sdkList); // await bloodPressureService.insertBloodPressureDataIfNotExists(companion);
-                  print("血壓數據寫入成功");
-                  //// 寫入成功後刪除戒指數據
-                  await deleteDeviceData(HealthDataType.bloodPressure);
-                }
+                printLongText("血壓數據：$jsonStr");
+                await bloodPressureService.syncBloodPressureData(
+                    userId: _userId!,
+                    sdkData:
+                        sdkList); // await bloodPressureService.insertBloodPressureDataIfNotExists(companion);
+                print("血壓數據寫入成功");
+                //// 寫入成功後刪除戒指數據
+                await deleteDeviceData(HealthDataType.bloodPressure);
+              }
 
-                break;
-              case HealthDataType.combinedData:
-                final combinedDataService = CombinedDataService(_db);
-                if (list.last is CombinedDataDataInfo) {
-                  final sdkList = list.cast<CombinedDataDataInfo>();
-                  final listJson = sdkList
-                      .map((e) => parseSdkDataString(e.toString()))
-                      .toList();
-                  final wrapperdJson = {
-                    "合併數據": listJson,
-                  };
+              break;
+            case HealthDataType.combinedData:
+              final combinedDataService = CombinedDataService(_db);
+              if (list.last is CombinedDataDataInfo) {
+                final sdkList = list.cast<CombinedDataDataInfo>();
+                final listJson = sdkList
+                    .map((e) => parseSdkDataString(e.toString()))
+                    .toList();
+                final wrapperdJson = {
+                  "合併數據": listJson,
+                };
 
-                  String jsonStr = jsonEncode(wrapperdJson);
+                String jsonStr = jsonEncode(wrapperdJson);
 
-                  printLongText("合併數據：$jsonStr");
-                  await combinedDataService.syncCombinedData(
-                      userId: _userId!,
-                      sdkData:
-                          sdkList); // await combinedDataService.insertCombinedDataIfNotExists(companion);
-                  print("合併數據寫入成功");
-                  //// 寫入成功後刪除戒指數據
-                  await deleteDeviceData(HealthDataType.combinedData);
-                }
+                printLongText("合併數據：$jsonStr");
+                await combinedDataService.syncCombinedData(
+                    userId: _userId!,
+                    sdkData:
+                        sdkList); // await combinedDataService.insertCombinedDataIfNotExists(companion);
+                print("合併數據寫入成功");
+                //// 寫入成功後刪除戒指數據
+                await deleteDeviceData(HealthDataType.combinedData);
+              }
 
-                break;
-              case HealthDataType.invasiveComprehensiveData:
-                final invasiveComprehensiveDataService =
-                    InvasiveComprehensiveDataService(_db);
-                if (list.last is InvasiveComprehensiveDataInfo) {
-                  final sdkList = list.cast<InvasiveComprehensiveDataInfo>();
-                  print("入侵綜合數據：$sdkList");
-                  await invasiveComprehensiveDataService
-                      .syncInvasiveComprehensiveData(
-                          userId: _userId!,
-                          sdkData:
-                              sdkList); // await invasiveComprehensiveDataService.insertInvasiveComprehensiveDataIfNotExists(companion);
-                  print("入侵綜合數據寫入成功");
-                }
-                break;
-            }
+              break;
+            case HealthDataType.invasiveComprehensiveData:
+              final invasiveComprehensiveDataService =
+                  InvasiveComprehensiveDataService(_db);
+              if (list.last is InvasiveComprehensiveDataInfo) {
+                final sdkList = list.cast<InvasiveComprehensiveDataInfo>();
+                print("入侵綜合數據：$sdkList");
+                await invasiveComprehensiveDataService
+                    .syncInvasiveComprehensiveData(
+                        userId: _userId!,
+                        sdkData:
+                            sdkList); // await invasiveComprehensiveDataService.insertInvasiveComprehensiveDataIfNotExists(companion);
+                print("入侵綜合數據寫入成功");
+              }
+              break;
           }
         }
       }
@@ -421,8 +421,9 @@ class HealthDataSyncService {
   }
 
   Future<void> deleteDeviceData(int type) async {
-    final res = await YcProductPlugin().deleteDeviceHealthData(type);
-    if (res != null && res.statusCode == PluginState.succeed) {
+    final ycDeviceService = YcDeviceService.instance;
+    final res = await ycDeviceService.deleteDeviceHealthData(type);
+    if (res) {
       printLongText("刪除健康數據成功");
     }
   }
