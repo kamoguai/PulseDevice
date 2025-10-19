@@ -47,6 +47,10 @@ class K42Controller extends GetxController {
         UserProfileStorage.saveDeviceForCurrentUser(gc.userId.value, device);
         await callApiBindDevice(device);
 
+        // 🎯 設備綁定成功後，啟動重連機制
+        gc.ycDeviceService.startReconnectMechanism();
+        print("✅ 設備綁定成功，已啟動重連機制");
+
         Future.delayed(const Duration(milliseconds: 500), () {
           goHomePage();
         });

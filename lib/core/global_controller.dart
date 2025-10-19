@@ -27,6 +27,7 @@ import 'package:pulsedevice/core/hiveDb/remider_setting.dart';
 import 'package:pulsedevice/core/hiveDb/sport_record.dart';
 import 'package:pulsedevice/core/hiveDb/sport_record_list.dart';
 import 'package:pulsedevice/core/hiveDb/user_profile.dart';
+import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
 import 'package:pulsedevice/core/network/api.dart';
 import 'package:pulsedevice/core/network/api_service.dart';
 import 'package:pulsedevice/core/service/app_lifecycle_observer.dart';
@@ -218,6 +219,11 @@ class GlobalController extends GetxController {
       setupIosMessageChannel();
       print("✅ setupIosMessageChannel called from GlobalController");
     }
+
+    Future.delayed(const Duration(seconds: 10), () {
+      /// 🎯 根據需要啟動重連機制
+      _startReconnectMechanismIfNeeded();
+    });
   }
 
   /// 藍牙狀態變化回調
@@ -246,6 +252,15 @@ class GlobalController extends GetxController {
   void _onConnectionStatusChanged(bool connected) {
     print("🔗 GlobalController 收到連接狀態變化: $connected");
     isBleConnect.value = connected;
+
+    // 🎯 根據連接狀態管理重連機制
+    if (connected) {
+      print("✅ 設備已連接，停止重連機制");
+      ycDeviceService.stopReconnectMechanism();
+    } else {
+      print("❌ 設備已斷開，啟動重連機制");
+      ycDeviceService.startReconnectMechanism();
+    }
   }
 
   /// 數據準備狀態變化回調
@@ -254,9 +269,42 @@ class GlobalController extends GetxController {
     isBleDataReady.value = ready;
   }
 
+  /// 🎯 根據需要啟動重連機制
+  void _startReconnectMechanismIfNeeded() {
+    try {
+      // 檢查是否有綁定設備
+      if (_hasBoundDevice()) {
+        print("✅ 檢測到綁定設備，啟動重連機制");
+        ycDeviceService.startReconnectMechanism();
+      } else {
+        print("ℹ️ 沒有綁定設備，不啟動重連機制");
+      }
+    } catch (e) {
+      print("❌ 啟動重連機制時發生錯誤: $e");
+    }
+  }
+
+  /// 🎯 檢查是否有綁定設備
+  bool _hasBoundDevice() {
+    try {
+      if (userId.value.isEmpty) {
+        return false;
+      }
+
+      // 檢查用戶是否有綁定的設備
+      final userProfile = UserProfileStorage.getUserProfile(userId.value);
+      return userProfile?.devices?.isNotEmpty ?? false;
+    } catch (e) {
+      print("❌ 檢查綁定設備時發生錯誤: $e");
+      return false;
+    }
+  }
+
   /// 事件分發核心邏輯
   void _distributeEvent(Map event) {
     try {
+      print("🔍 GlobalController 開始分發事件: $event");
+
       // 處理每個事件類型
       for (String eventType in event.keys) {
         print("🔄 處理事件類型: $eventType");
@@ -273,11 +321,15 @@ class GlobalController extends GetxController {
 
           for (Function(Map) handler in handlers) {
             try {
+              print("🔍 調用處理器: $handler");
               handler(event);
+              print("✅ 處理器調用成功");
             } catch (e) {
               print("❌ 事件處理器執行失敗 ($eventType): $e");
             }
           }
+        } else {
+          print("⚠️ 沒有找到事件類型 $eventType 的處理器");
         }
       }
     } catch (e, stackTrace) {

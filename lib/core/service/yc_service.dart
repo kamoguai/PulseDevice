@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'package:get/get.dart';
+import 'package:pulsedevice/core/global_controller.dart';
+import 'package:pulsedevice/core/hiveDb/device_profile.dart';
+import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
 import 'package:pulsedevice/core/utils/snackbar_helper.dart';
+import 'package:pulsedevice/routes/app_routes.dart';
 import 'package:yc_product_plugin/yc_product_plugin.dart';
 
 /// YC 設備服務 - 統一管理藍牙設備相關操作
@@ -29,6 +35,11 @@ class YcDeviceService {
   int _currentBluetoothStatus = 0;
   bool _isConnected = false;
   bool _isDataReady = false;
+
+  // 重連機制相關
+  Timer? _reconnectTimer;
+  bool _isReconnectEnabled = false;
+  static const int reconnectInterval = 30; // 30秒
 
   /// 初始化服務
   Future<bool> initialize() async {
@@ -67,7 +78,21 @@ class YcDeviceService {
         _handleBluetoothStateChange(newStatus);
       }
 
-      // 可以在這裡處理更多設備相關事件
+      // 🔄 新增：處理運動事件並分發到GlobalController
+      if (event.containsKey(NativeEventType.deviceRealSport)) {
+        print("🏃 YcDeviceService 收到運動事件，分發到GlobalController");
+        // 獲取GlobalController實例並分發事件
+        try {
+          final gc = Get.find<GlobalController>();
+          gc.distributeEvent(event);
+          print("✅ YcDeviceService 運動事件分發成功");
+        } catch (e) {
+          print("❌ YcDeviceService 運動事件分發失敗: $e");
+        }
+      }
+
+      // 🔄 新增：處理其他設備事件（如需要）
+      // 可以在這裡添加其他事件類型的處理邏輯
     } catch (e) {
       print("❌ YcDeviceService 事件處理失敗: $e");
     }
@@ -478,8 +503,202 @@ class YcDeviceService {
     return await instance.clearAllBluetoothData();
   }
 
+  // ======================================================
+  // 🎯 重連機制功能
+  // ======================================================
+
+  /// 啟動重連機制
+  void startReconnectMechanism() {
+    if (_isReconnectEnabled) {
+      print("ℹ️ 重連機制已經在運行中");
+      return;
+    }
+
+    // 檢查是否有綁定設備
+    if (!_hasBoundDevice()) {
+      print("❌ 沒有綁定設備，不啟動重連機制");
+      return;
+    }
+
+    _isReconnectEnabled = true;
+    _reconnectTimer =
+        Timer.periodic(Duration(seconds: reconnectInterval), (timer) {
+      _checkAndReconnect();
+    });
+
+    print("✅ 重連機制已啟動，每 ${reconnectInterval} 秒檢查一次");
+  }
+
+  /// 停止重連機制
+  void stopReconnectMechanism() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _isReconnectEnabled = false;
+    print("🛑 重連機制已停止");
+  }
+
+  /// 檢查是否有綁定設備
+  bool _hasBoundDevice() {
+    try {
+      // 從 GlobalController 獲取當前用戶ID
+      if (Get.isRegistered<GlobalController>()) {
+        final globalController = Get.find<GlobalController>();
+        final userId = globalController.userId.value;
+
+        if (userId.isEmpty) {
+          return false;
+        }
+
+        // 檢查用戶是否有綁定的設備
+        final userProfile = UserProfileStorage.getUserProfile(userId);
+        return userProfile?.devices?.isNotEmpty ?? false;
+      }
+      return false;
+    } catch (e) {
+      print("❌ 檢查綁定設備時發生錯誤: $e");
+      return false;
+    }
+  }
+
+  /// 檢查並重連
+  void _checkAndReconnect() {
+    try {
+      // 1. 檢查當前頁面
+      if (_shouldSkipReconnect()) {
+        return;
+      }
+
+      // 2. 檢查設備連接狀態
+      if (_isConnected) {
+        return; // 已連接，不需要重連
+      }
+
+      // 3. 嘗試重連
+      _attemptReconnect();
+    } catch (e) {
+      print("❌ 檢查重連時發生錯誤: $e");
+    }
+  }
+
+  /// 檢查是否應該跳過重連
+  bool _shouldSkipReconnect() {
+    try {
+      String currentRoute = Get.currentRoute;
+
+      // 在這些頁面不進行重連
+      List<String> skipRoutes = [
+        AppRoutes.appNavigationScreen,
+        AppRoutes.k0Screen,
+        AppRoutes.k1Screen,
+        AppRoutes.k2Screen,
+        AppRoutes.oneScreen,
+        AppRoutes.k10Screen,
+        AppRoutes.one2Screen,
+        AppRoutes.one3Screen,
+        AppRoutes.two3Screen,
+        AppRoutes.k40Screen,
+        AppRoutes.k45Screen,
+        AppRoutes.one9Screen,
+        AppRoutes.initialRoute,
+        AppRoutes.fourScreen,
+        AppRoutes.k14Screen,
+      ];
+
+      bool shouldSkip = skipRoutes.contains(currentRoute);
+      if (shouldSkip) {
+        print("ℹ️ 當前頁面 $currentRoute 跳過重連");
+      }
+      return shouldSkip;
+    } catch (e) {
+      print("❌ 檢查頁面路由時發生錯誤: $e");
+      return false;
+    }
+  }
+
+  /// 嘗試重連
+  Future<void> _attemptReconnect() async {
+    try {
+      print("🔄 開始嘗試重連...");
+
+      // 1. 獲取綁定的設備信息
+      DeviceProfile? deviceProfile = await _getBoundDeviceProfile();
+      if (deviceProfile == null) {
+        print("❌ 沒有找到綁定的設備信息");
+        return;
+      }
+
+      // 2. 轉換為 BluetoothDevice
+      BluetoothDevice device = _convertToBluetoothDevice(deviceProfile);
+
+      // 3. 重置配對
+      await resetBond();
+
+      // 4. 嘗試連接
+      bool success = await connectDevice(device);
+
+      if (success) {
+        print("✅ 重連成功");
+        // 觸發連接成功回調
+        onConnectionStatusChanged?.call(true);
+      } else {
+        print("❌ 重連失敗");
+      }
+    } catch (e) {
+      print("❌ 重連過程中發生錯誤: $e");
+    }
+  }
+
+  /// 獲取綁定的設備信息
+  Future<DeviceProfile?> _getBoundDeviceProfile() async {
+    try {
+      if (Get.isRegistered<GlobalController>()) {
+        final globalController = Get.find<GlobalController>();
+        final userId = globalController.userId.value;
+
+        if (userId.isEmpty) {
+          return null;
+        }
+
+        // 獲取用戶的設備列表
+        final devices = await UserProfileStorage.getDevicesForUser(userId);
+
+        if (devices.isNotEmpty) {
+          // 返回第一個設備（可以根據需要調整邏輯）
+          return devices.first;
+        }
+      }
+      return null;
+    } catch (e) {
+      print("❌ 獲取綁定設備信息時發生錯誤: $e");
+      return null;
+    }
+  }
+
+  /// 將 DeviceProfile 轉換為 BluetoothDevice
+  BluetoothDevice _convertToBluetoothDevice(DeviceProfile profile) {
+    final Map<String, dynamic> json = {
+      "macAddress": profile.macAddress,
+      "deviceIdentifier": profile.deviceIdentifier,
+      "name": profile.name,
+      "rssiValue": profile.rssiValue,
+      "firmwareVersion": profile.firmwareVersion,
+      "deviceSize": profile.deviceSize,
+      "deviceColor": profile.deviceColor,
+      "imageIndex": profile.imageIndex,
+      "deviceModel": profile.deviceModel,
+    };
+
+    return BluetoothDevice.formJson(json);
+  }
+
+  /// 獲取重連狀態
+  bool get isReconnectEnabled => _isReconnectEnabled;
+
   /// 清理資源
   void dispose() {
+    // 停止重連機制
+    stopReconnectMechanism();
+
     YcProductPlugin().cancelListening();
     _isListening = false;
     _isInitialized = false;
