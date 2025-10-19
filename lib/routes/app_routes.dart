@@ -222,8 +222,6 @@ class AppRoutes {
 
   static const String initialRoute = '/initialRoute';
 
-  static const String rulePickerTestScreen = '/rulePickerTestScreen';
-
   static const String k76Screen = '/k76_screen';
 
   static const String k5Screen = '/k5_screen';
@@ -503,13 +501,13 @@ class AppRoutes {
 
     ///諮詢頁面-歷史
     GetPage(name: k20Screen, page: () => K20Screen(), bindings: [K20Binding()]),
-
+    // sms簡訊驗證頁面
     GetPage(
       name: fourScreen,
       page: () => FourScreen(),
       bindings: [FourBinding()],
     ),
-
+    // 忘記密碼頁面
     GetPage(
       name: k14Screen,
       page: () => K14Screen(),
@@ -521,24 +519,19 @@ class AppRoutes {
       page: () => K39Screen(),
       bindings: [K39Binding()],
     ),
-
+    // 家人設定頁面
     GetPage(
       name: two7Screen,
       page: () => Two7Screen(),
       bindings: [Two7Binding()],
     ),
-
+    // 健康-心率頁面
     GetPage(
       name: k77Page,
       page: () => K77Page(),
       bindings: [K77Binding()],
     ),
 
-    GetPage(
-      name: rulePickerTestScreen,
-      page: () => RulerPickerTestScreen(),
-      bindings: [RulerPikerTestBinding()],
-    ),
     GetPage(
       name: k36DeviceDetailesScreen,
       page: () => K36DeviceDetailesScreen(),

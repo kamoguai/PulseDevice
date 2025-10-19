@@ -30,7 +30,11 @@ import 'package:pulsedevice/core/hiveDb/remider_setting.dart';
 import 'package:pulsedevice/core/hiveDb/sport_record.dart';
 import 'package:pulsedevice/core/hiveDb/sport_record_list.dart';
 import 'package:pulsedevice/core/hiveDb/user_profile.dart';
+
 import 'package:pulsedevice/core/hiveDb/pp_device_profile.dart';
+
+import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
+
 import 'package:pulsedevice/core/network/api.dart';
 import 'package:pulsedevice/core/service/pp_scale_service.dart';
 import 'package:pulsedevice/core/network/api_service.dart';
@@ -52,6 +56,7 @@ import 'package:pulsedevice/core/utils/dialog_utils.dart';
 import 'package:pulsedevice/core/utils/firebase_helper.dart';
 import 'package:pulsedevice/core/utils/permission_helper.dart';
 import 'package:pulsedevice/core/utils/sync_background_taskhandler.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:yc_product_plugin/yc_product_plugin.dart';
 
 class GlobalController extends GetxController {
@@ -73,6 +78,9 @@ class GlobalController extends GetxController {
   late final PressureCalculationService pressureCalculationService;
   late final SyncDataService syncDataService;
   ApiService apiService = ApiService();
+
+  ///--- YcDeviceService 實例
+  late YcDeviceService ycDeviceService;
 
   ///--- 藍牙狀態
   RxInt blueToolStatus = 0.obs;
@@ -104,8 +112,6 @@ class GlobalController extends GetxController {
   var isSendSyncApi = "Y".obs;
 
   bool _isInitFuncRunning = false;
-
-  int _previousBluetoothStatus = -1;
 
   DateTime? _lastSyncTime;
 
@@ -185,6 +191,15 @@ class GlobalController extends GetxController {
     super.onInit();
     lifecycleObserver = AppLifecycleObserver(this);
     WidgetsBinding.instance.addObserver(lifecycleObserver);
+
+    // 獲取 YcDeviceService 實例
+    ycDeviceService = YcDeviceService.instance;
+
+    // 設置藍牙狀態回調
+    ycDeviceService.setBluetoothStatusCallback(_onBluetoothStatusChanged);
+    ycDeviceService.setConnectionStatusCallback(_onConnectionStatusChanged);
+    ycDeviceService.setDataReadyCallback(_onDataReadyChanged);
+
     init();
 
     // ✅ 監聽條件是否同時成立
@@ -200,7 +215,7 @@ class GlobalController extends GetxController {
   @override
   void onClose() {
     super.onClose();
-    YcProductPlugin().cancelListening();
+    ycDeviceService.dispose();
 
     // 磅秤 keepAlive 已由 PPScaleService 管理
 
@@ -214,7 +229,10 @@ class GlobalController extends GetxController {
     /// 初始化firebase
     hiveInit();
     sqfliteInit();
-    YcProductPluginInit();
+
+    /// 初始化 YcDeviceService
+    await ycDeviceService.initialize();
+
     lefuInit();
 
     /// 註冊 PPScaleService
@@ -231,24 +249,92 @@ class GlobalController extends GetxController {
       setupIosMessageChannel();
       print("✅ setupIosMessageChannel called from GlobalController");
     }
+
+    Future.delayed(const Duration(seconds: 10), () {
+      /// 🎯 根據需要啟動重連機制
+      _startReconnectMechanismIfNeeded();
+    });
   }
 
-  /// 初始化穿戴式sdk
-  void YcProductPluginInit() async {
-    // 初始化穿戴式sdk
-    YcProductPlugin().initPlugin(isReconnectEnable: true, isLogEnable: true);
-    // 啟動監聽
-    YcProductPlugin().onListening((event) {
-      print("=== GlobalController 統一監聽 Event: $event");
-      print("=== Event keys: ${event.keys}");
+  /// 藍牙狀態變化回調
+  void _onBluetoothStatusChanged(int status) {
+    print("🔄 GlobalController 收到藍牙狀態變化: $status");
+    blueToolStatus.value = status;
 
-      _distributeEvent(event);
-    });
+    // 根據狀態執行相應邏輯
+    switch (status) {
+      case 2: // 已連接
+        if (userId.value.isNotEmpty) {
+          initFunc();
+        }
+        break;
+      case 0:
+      case 3:
+      case 4: // 斷開或連接失敗
+        if (_isInitFuncRunning) {
+          stopForegroundTask();
+        }
+        break;
+    }
+  }
+
+  /// 連接狀態變化回調
+  void _onConnectionStatusChanged(bool connected) {
+    print("🔗 GlobalController 收到連接狀態變化: $connected");
+    isBleConnect.value = connected;
+
+    // 🎯 根據連接狀態管理重連機制
+    if (connected) {
+      print("✅ 設備已連接，停止重連機制");
+      ycDeviceService.stopReconnectMechanism();
+    } else {
+      print("❌ 設備已斷開，啟動重連機制");
+      ycDeviceService.startReconnectMechanism();
+    }
+  }
+
+  /// 數據準備狀態變化回調
+  void _onDataReadyChanged(bool ready) {
+    print("📊 GlobalController 收到數據準備狀態變化: $ready");
+    isBleDataReady.value = ready;
+  }
+
+  /// 🎯 根據需要啟動重連機制
+  void _startReconnectMechanismIfNeeded() {
+    try {
+      // 檢查是否有綁定設備
+      if (_hasBoundDevice()) {
+        print("✅ 檢測到綁定設備，啟動重連機制");
+        ycDeviceService.startReconnectMechanism();
+      } else {
+        print("ℹ️ 沒有綁定設備，不啟動重連機制");
+      }
+    } catch (e) {
+      print("❌ 啟動重連機制時發生錯誤: $e");
+    }
+  }
+
+  /// 🎯 檢查是否有綁定設備
+  bool _hasBoundDevice() {
+    try {
+      if (userId.value.isEmpty) {
+        return false;
+      }
+
+      // 檢查用戶是否有綁定的設備
+      final userProfile = UserProfileStorage.getUserProfile(userId.value);
+      return userProfile?.devices?.isNotEmpty ?? false;
+    } catch (e) {
+      print("❌ 檢查綁定設備時發生錯誤: $e");
+      return false;
+    }
   }
 
   /// 事件分發核心邏輯
   void _distributeEvent(Map event) {
     try {
+      print("🔍 GlobalController 開始分發事件: $event");
+
       // 處理每個事件類型
       for (String eventType in event.keys) {
         print("🔄 處理事件類型: $eventType");
@@ -265,11 +351,15 @@ class GlobalController extends GetxController {
 
           for (Function(Map) handler in handlers) {
             try {
+              print("🔍 調用處理器: $handler");
               handler(event);
+              print("✅ 處理器調用成功");
             } catch (e) {
               print("❌ 事件處理器執行失敗 ($eventType): $e");
             }
           }
+        } else {
+          print("⚠️ 沒有找到事件類型 $eventType 的處理器");
         }
       }
     } catch (e, stackTrace) {
@@ -311,9 +401,6 @@ class GlobalController extends GetxController {
       if (st is int) {
         bluetoothState = st;
         print("📱 使用 int 格式：$bluetoothState");
-      } else if (st is Map && st.containsKey('bluetoothStateChange')) {
-        bluetoothState = st['bluetoothStateChange'];
-        print("📱 使用 Map 格式：$bluetoothState");
       } else {
         print("❌ 未知的藍牙狀態數據格式：$st");
         return;
@@ -742,16 +829,7 @@ class GlobalController extends GetxController {
   }
 
   Future<bool> getBlueToothDeviceInfo() async {
-    var res = false;
-    PluginResponse<DeviceBasicInfo>? deviceBasicInfo =
-        await YcProductPlugin().queryDeviceBasicInfo();
-    if (deviceBasicInfo != null && deviceBasicInfo.statusCode == 0) {
-      if (deviceBasicInfo.data.batteryPower < 20) {
-        NotificationService().showDeviceLowPowerNotification();
-      }
-      res = true;
-    }
-    return res;
+    return await ycDeviceService.queryDeviceBasicInfo();
   }
 
   /// 背景同步，anroid沒問題，但ios有限制
@@ -769,7 +847,6 @@ class GlobalController extends GetxController {
           final log = "[BackgroundFetch] Event received: $taskId";
           print(log);
           await logToDisk(log);
-          await apiService.sendLog(json: log, logType: "DEBUG");
           await safeRunSync(); // 你自己的任務邏輯
         } catch (e, st) {
           final errLog = "❌ Error: $e\n$st";
@@ -806,33 +883,8 @@ class GlobalController extends GetxController {
 
   void _handleBluetoothStateChange(int newStatus) async {
     print("_handleBluetoothStateChange : $newStatus");
-    // if (newStatus == _previousBluetoothStatus) return;
-    // _previousBluetoothStatus = newStatus;
-
-    blueToolStatus.value = newStatus;
-    print('🔄 藍牙狀態改變：$newStatus');
-
-    switch (newStatus) {
-      case 2:
-        if (userId.value.isNotEmpty) {
-          isBleConnect.value = true;
-
-          initFunc();
-          await apiService.sendLog(json: "藍牙連線成功", logType: "DEBUG");
-        }
-        break;
-      case 0:
-      case 3:
-      case 4:
-        isBleConnect.value = false;
-
-        if (_isInitFuncRunning) {
-          // NotificationService().showDeviceDisconnectedNotification();
-          stopForegroundTask();
-        }
-        await apiService.sendLog(json: "藍牙連線中斷", logType: "WARN");
-        break;
-    }
+    // 這個方法現在由 _onBluetoothStatusChanged 回調處理
+    // 保留此方法以向後兼容，但實際邏輯已移到回調中
   }
 
   Future<void> postApi(String main) async {

@@ -4,6 +4,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pulsedevice/core/global_controller.dart';
 import 'package:pulsedevice/core/service/firebase_analytics_service.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
 import 'package:pulsedevice/core/utils/dialog_utils.dart';
 import 'package:pulsedevice/presentation/ios_dialog/controller/ios_controller.dart';
@@ -108,7 +109,7 @@ class K40Controller extends GetxController {
           granted = statusLocation.isGranted;
         }
         if (granted) {
-          final state = await YcProductPlugin().getBluetoothState();
+          final state = await YcDeviceService.getBluetoothStateStatic();
           if (state == BluetoothState.on ||
               state == BluetoothState.disconnected ||
               state == BluetoothState.connected) {
@@ -133,17 +134,15 @@ class K40Controller extends GetxController {
   Future<void> getBlueToothDeviceInfo() async {
     k40ModelObj.value.listpulseringItemList.refresh();
     try {
-      PluginResponse<DeviceBasicInfo>? deviceBasicInfo =
-          await YcProductPlugin().queryDeviceBasicInfo();
-      if (deviceBasicInfo != null && deviceBasicInfo.statusCode == 0) {
-        power.value = "${deviceBasicInfo.data.batteryPower} %";
-        for (var item in k40ModelObj.value.listpulseringItemList.value) {
-          if (item.pulsering == "lbl_pulsering3".tr) {
-            item.power = Rx("msg_power".tr + " : " + power.value);
-          }
+      bool success = await YcDeviceService.instance.queryDeviceBasicInfo();
+      if (success) {
+        int? battery = await YcDeviceService.instance.getBatteryLevel();
+        if (battery != null) {
+          power.value = "$battery %";
+          k40ModelObj.value.listpulseringItemList.value[0].power =
+              Rx("msg_power".tr + " : " + power.value);
+          k40ModelObj.value.listpulseringItemList.refresh();
         }
-
-        k40ModelObj.value.listpulseringItemList.refresh();
       }
     } catch (e) {
       power.value = "";

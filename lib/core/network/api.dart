@@ -1,6 +1,7 @@
 class Api {
   ///-------- api
   static const String baseUrl = "http://api-admin.fixfate.net:38080/";
+  // static const String baseUrl = "http://60.250.109.71:38080/";
 
   static const String login = "login";
   static const String register = "register";
@@ -33,13 +34,13 @@ class Api {
   static const String gpsSet = "gpslog/set";
 
   ///-------- aws api 正式機
-//   static const String awsUrl =
-//       "https://4dyojbdrcb.execute-api.us-east-1.amazonaws.com/prod/";
-//   static const String awsUrl2 =
-//       "https://mraofolcb5.execute-api.us-east-1.amazonaws.com/prod/";
+  // static const String awsUrl =
+  //     "https://4dyojbdrcb.execute-api.us-east-1.amazonaws.com/prod/";
+  // static const String awsUrl2 =
+  //     "https://mraofolcb5.execute-api.us-east-1.amazonaws.com/prod/";
 
-//   static const String socketUrl =
-//       "wss://ssubii43ya.execute-api.us-east-1.amazonaws.com/prod";
+  // static const String socketUrl =
+  //     "wss://ssubii43ya.execute-api.us-east-1.amazonaws.com/prod";
 
   ///-------- aws api 測試機
   static const String awsUrl =

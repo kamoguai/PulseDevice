@@ -28,9 +28,6 @@ class K5Controller extends GetxController
 
   Rx<InitialTabModel> initialTabModelObj = InitialTabModel().obs;
 
-  /// 旗標：是否「正在運動」，只有這個為 true 時才處理運動資料
-  bool _isListening = false;
-
   /// ✅ 運動事件處理器
   late Function(Map) _sportEventHandler;
 
@@ -68,6 +65,14 @@ class K5Controller extends GetxController
   DateTime? _gpsStartTime;
   Timer? _gpsTimer;
 
+  // 🔄 設備斷線保障機制
+  DateTime? _localStartTime; // 本地計時器開始時間
+  Timer? _localTimer; // 本地計時器
+  int _localElapsedSeconds = 0; // 本地累計時間
+  DateTime? _lastDeviceDataTime; // 最後接收設備數據的時間
+  Timer? _disconnectDetectionTimer; // 設備斷線檢測定時器
+  bool _deviceDisconnected = false; // 設備是否斷線
+
   @override
   void onInit() {
     super.onInit();
@@ -96,6 +101,12 @@ class K5Controller extends GetxController
     if (_isUsingGpsMode.value && _gpsStartTime != null) {
       return DateTime.now().difference(_gpsStartTime!).inSeconds;
     }
+
+    // 🔄 如果設備斷線，使用本地計時器時間
+    if (_deviceDisconnected && _localStartTime != null) {
+      return DateTime.now().difference(_localStartTime!).inSeconds;
+    }
+
     return lastHours.value * 3600 + lastMinutes.value * 60 + lastSeconds.value;
   }
 
@@ -109,6 +120,9 @@ class K5Controller extends GetxController
 
     // 🎯 清理GPS模式資源
     _cleanupGpsMode();
+
+    // 🔄 清理本地計時器資源
+    _cleanupLocalTimer();
   }
 
   @override
@@ -182,6 +196,14 @@ class K5Controller extends GetxController
       return;
     }
 
+    // 🔄 更新設備數據接收時間
+    _lastDeviceDataTime = DateTime.now();
+
+    // 如果之前設備斷線，現在重連了
+    if (_deviceDisconnected) {
+      _onDeviceReconnected();
+    }
+
     // 取出運動數據
     final Map? sportInfo = event[NativeEventType.deviceRealSport];
     if (sportInfo == null) {
@@ -189,15 +211,21 @@ class K5Controller extends GetxController
       return;
     }
 
-    // 原有的運動數據處理邏輯
-    final int totalSec = int.tryParse(sportInfo["time"].toString()) ?? 0;
+    // 🔄 處理設備時間（優先使用設備時間）
+    int? deviceTime = int.tryParse(sportInfo["time"].toString());
+    if (deviceTime != null && deviceTime > 0) {
+      _updateTimeFields(deviceTime);
+      print("📱 使用設備時間: $deviceTime 秒");
+    }
+
+    // 處理其他運動數據
     bpm.value = int.tryParse(sportInfo["heartRate"].toString()) ?? 0;
     distance.value = int.tryParse(sportInfo["distance"].toString()) ?? 0;
     steps.value = int.tryParse(sportInfo["step"].toString()) ?? 0;
     calories.value = int.tryParse(sportInfo["calories"].toString()) ?? 0;
 
     _lastSportCache = {
-      'sec': totalSec,
+      'sec': deviceTime ?? _localElapsedSeconds,
       'bpm': bpm.value,
       'distance': distance.value,
       'steps': steps.value,
@@ -207,17 +235,6 @@ class K5Controller extends GetxController
     final model =
         SportRecord(sportType: '', time: DateTime.now(), bpm: bpm.value);
     records.add(model);
-
-    _updateTimeFields(totalSec);
-  }
-
-  /// 將 SDK 的 onListening(callback) 包成一個方法
-  void _registerSdkListener() {
-    if (_isListening) return;
-    _isListening = true;
-
-    // ✅ 現在不需要直接註冊 SDK 監聽器，改為狀態管理
-    print("✅ 運動監聽器已通過全局事件系統準備就緒");
   }
 
   /// 運動頁首次開啟時，主動呼叫 startPage()
@@ -427,6 +444,82 @@ class K5Controller extends GetxController
     print('⏱️ GPS時間計算器已啟動');
   }
 
+  // ======================================================
+  // 🔄 設備斷線保障機制
+  // ======================================================
+
+  /// 啟動本地計時器（作為設備時間的備用）
+  void _startLocalTimer() {
+    _localStartTime = DateTime.now();
+    _localElapsedSeconds = 0;
+
+    _localTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (isStart.value && _localStartTime != null) {
+        _localElapsedSeconds =
+            DateTime.now().difference(_localStartTime!).inSeconds;
+
+        // 只有在設備斷線時才使用本地時間更新UI
+        if (_deviceDisconnected) {
+          _updateTimeFields(_localElapsedSeconds);
+          print("🔄 使用本地時間: $_localElapsedSeconds 秒");
+        }
+      }
+    });
+
+    print('⏱️ 本地計時器已啟動');
+  }
+
+  /// 啟動設備斷線檢測
+  void _startDisconnectDetection() {
+    _disconnectDetectionTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      if (isStart.value && _lastDeviceDataTime != null) {
+        final timeSinceLastData =
+            DateTime.now().difference(_lastDeviceDataTime!);
+
+        // 如果超過5秒沒有收到設備數據，認為設備斷線
+        if (timeSinceLastData.inSeconds > 5) {
+          if (!_deviceDisconnected) {
+            print("⚠️ 檢測到設備斷線，切換到本地時間");
+            _onDeviceDisconnected();
+          }
+        } else {
+          // 設備數據正常，如果之前斷線則恢復
+          if (_deviceDisconnected) {
+            print("✅ 設備數據恢復正常");
+            _onDeviceReconnected();
+          }
+        }
+      }
+    });
+
+    print('🔍 設備斷線檢測已啟動');
+  }
+
+  /// 設備斷線處理
+  void _onDeviceDisconnected() {
+    _deviceDisconnected = true;
+    print("🔄 設備斷線，切換到本地時間繼續計算");
+  }
+
+  /// 設備重連處理
+  void _onDeviceReconnected() {
+    _deviceDisconnected = false;
+    print("✅ 設備重連，繼續使用本地時間（避免時間跳躍）");
+  }
+
+  /// 清理本地計時器相關資源
+  void _cleanupLocalTimer() {
+    _localTimer?.cancel();
+    _localTimer = null;
+    _disconnectDetectionTimer?.cancel();
+    _disconnectDetectionTimer = null;
+    _localStartTime = null;
+    _localElapsedSeconds = 0;
+    _lastDeviceDataTime = null;
+    _deviceDisconnected = false;
+    print('🧹 本地計時器資源已清理');
+  }
+
   /// 把最後一次「運動資料」寫到 Hive
   void _saveExerciseRecordToHive() async {
     final b = bpm.value;
@@ -508,6 +601,10 @@ class K5Controller extends GetxController
       isStart.value = true;
       clearData(); // 先把畫面上的上次資料歸零
 
+      // 🔄 無論哪種模式都啟動本地計時器和斷線檢測
+      _startLocalTimer();
+      _startDisconnectDetection();
+
       if (_isUsingGpsMode.value) {
         // 📍 GPS模式：藍牙設備未連接
         print("🗺️ 藍牙設備未連接，使用GPS運動模式");
@@ -516,14 +613,14 @@ class K5Controller extends GetxController
         // 🔵 設備模式：藍牙設備已連接
         print("🔵 藍牙設備已連接，使用設備運動模式");
         await _startDeviceMode();
-        _isListening = true; // 設備模式需要監聽
       }
 
-      print("✅ 運動開始，模式: ${_isUsingGpsMode.value ? 'GPS' : '設備'}");
+      print("✅ 運動開始，模式: ${_isUsingGpsMode.value ? 'GPS' : '設備'}，本地計時器已啟動");
     } catch (e) {
       // 啟動失敗，重置狀態
       isStart.value = false;
       _isUsingGpsMode.value = false;
+      _cleanupLocalTimer(); // 清理本地計時器
       print("❌ 運動啟動失敗: $e");
 
       if (e.toString().contains('定位')) {
@@ -545,6 +642,9 @@ class K5Controller extends GetxController
       );
 
       isStart.value = false;
+
+      // 🔄 清理本地計時器資源
+      _cleanupLocalTimer();
 
       if (_isUsingGpsMode.value) {
         // 🗺️ GPS模式停止

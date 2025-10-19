@@ -33,7 +33,7 @@ class Two10Controller extends GetxController {
     ListenSettingStorage.saveUserProfile(gc.userId.value, profile);
 
     ///設定裝置偵測時間
-    YcService.setListeningTime(times.value.toInt());
+    YcDeviceService.setListeningTime(times.value.toInt());
   }
 
   void getData() async {

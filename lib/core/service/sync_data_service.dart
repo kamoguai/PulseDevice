@@ -206,9 +206,7 @@ class SyncDataService {
       'hasData': true,
       'data': {'sleep': unsyncedSleep, 'sleepDetails': unsyncedSleepDetails},
       'uploadFuture':
-          uploadSleep(unsyncedSleep, unsyncedSleepDetails, isSyncValue),
-      'uploadDetailsFuture':
-          uploadSleepDetail(unsyncedSleep, unsyncedSleepDetails, isSyncValue),
+          _uploadSleepsData(unsyncedSleep, unsyncedSleepDetails, isSyncValue),
     };
   }
 
@@ -290,6 +288,21 @@ class SyncDataService {
       return success;
     } catch (e) {
       print("❌ _uploadBloodOxygenData Error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> _uploadSleepsData(List<SleepDataData> datas,
+      List<SleepDetailDataData> detailsDatas, String isSyncApi) async {
+    try {
+      final futures = <Future<bool>>[];
+      futures.add(uploadSleep(datas, detailsDatas, isSyncApi));
+      futures.add(uploadSleepDetail(datas, detailsDatas, isSyncApi));
+
+      final results = await Future.wait(futures);
+      return results.every((success) => success);
+    } catch (e) {
+      print("❌ _uploadSleepsData Error: $e");
       return false;
     }
   }
@@ -563,7 +576,7 @@ class SyncDataService {
     for (final sleep in detailList) {
       ///---- sleep data
       result.add({
-        "userID": userId,
+        "userId": userId,
         "sleepType": sleep.sleepType,
         "duration": sleep.duration,
         "start_time_stamp": sleep.startTimeStamp,

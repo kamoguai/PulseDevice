@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pulsedevice/core/global_controller.dart';
 import 'package:pulsedevice/core/hiveDb/user_profile_storage.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:pulsedevice/core/utils/snackbar_helper.dart';
-import 'package:yc_product_plugin/yc_product_plugin.dart';
 import '../../../core/app_export.dart';
 import '../models/two4_model.dart';
 
@@ -21,7 +21,7 @@ class Two4Controller extends GetxController {
   }
 
   Future<void> blueToolDisconnect() async {
-    await YcProductPlugin().disconnectDevice();
+    await YcDeviceService.disconnectDeviceStatic();
     SnackbarHelper.showBlueSnackbar(
         title: 'snackbar_title'.tr,
         message: 'snackbar_bluetooth_disconnect'.tr);

@@ -1,9 +1,9 @@
 import 'package:pulsedevice/core/global_controller.dart';
 import 'package:pulsedevice/core/hiveDb/device_profile.dart';
+import 'package:pulsedevice/core/service/yc_service.dart';
 import 'package:pulsedevice/core/utils/dialog_utils.dart';
 import 'package:pulsedevice/presentation/two4_dialog/controller/two4_controller.dart';
 import 'package:pulsedevice/presentation/two4_dialog/two4_dialog.dart';
-import 'package:yc_product_plugin/yc_product_plugin.dart';
 import '../../../core/app_export.dart';
 import '../models/k45_model.dart';
 
@@ -25,12 +25,14 @@ class K45Controller extends GetxController {
   }
 
   Future<void> getBlueToothDeviceInfo() async {
-    PluginResponse<DeviceBasicInfo>? deviceBasicInfo =
-        await YcProductPlugin().queryDeviceBasicInfo();
-    if (deviceBasicInfo != null && deviceBasicInfo.statusCode == 0) {
-      power.value = "${deviceBasicInfo.data.batteryPower} %";
-      gc.blueToolStatus.value = 2;
-      initBlueTooth();
+    bool success = await YcDeviceService.instance.queryDeviceBasicInfo();
+    if (success) {
+      int? battery = await YcDeviceService.instance.getBatteryLevel();
+      if (battery != null) {
+        power.value = "$battery %";
+        gc.blueToolStatus.value = 2;
+        initBlueTooth();
+      }
     }
     deviceId.value = '${device.macAddress}';
     createdAt.value = '${device.createdAt}';

@@ -30,7 +30,7 @@ class K42Controller extends GetxController {
       );
 
       LoadingHelper.show();
-      final result = await YcProductPlugin().connectDevice(device);
+      final result = await YcDeviceService.connectDeviceStatic(device);
 
       if (result == true) {
         // 📊 記錄裝置配對成功事件
@@ -46,6 +46,10 @@ class K42Controller extends GetxController {
             title: '連線成功', message: '已連線到 ${device.name}');
         UserProfileStorage.saveDeviceForCurrentUser(gc.userId.value, device);
         await callApiBindDevice(device);
+
+        // 🎯 設備綁定成功後，啟動重連機制
+        gc.ycDeviceService.startReconnectMechanism();
+        print("✅ 設備綁定成功，已啟動重連機制");
 
         Future.delayed(const Duration(milliseconds: 500), () {
           goHomePage();
@@ -101,7 +105,7 @@ class K42Controller extends GetxController {
         var resBody = res['data'];
         if (resBody != null) {
           /// 設定裝置偵測時間，在連線成功後綁定api設定
-          YcService.setListeningTime(10);
+          YcDeviceService.setListeningTime(10);
           return true;
         } else {
           DialogHelper.showError("${res["message"]}");
@@ -118,14 +122,6 @@ class K42Controller extends GetxController {
 
   ///清除裝置健康數據
   Future<void> clearBluetoothData() async {
-    ///先清除裝置排程
-    YcProductPlugin().clearQueue();
-
-    ///再清除健康數據
-    YcProductPlugin().deleteDeviceHealthData(HealthDataType.step);
-    YcProductPlugin().deleteDeviceHealthData(HealthDataType.sleep);
-    YcProductPlugin().deleteDeviceHealthData(HealthDataType.heartRate);
-    YcProductPlugin().deleteDeviceHealthData(HealthDataType.bloodPressure);
-    YcProductPlugin().deleteDeviceHealthData(HealthDataType.combinedData);
+    await YcDeviceService.clearAllBluetoothDataStatic();
   }
 }
