@@ -599,6 +599,7 @@ class K5Controller extends GetxController
 
     try {
       isStart.value = true;
+      gc.isSporting.value = true;
       clearData(); // 先把畫面上的上次資料歸零
 
       // 🔄 無論哪種模式都啟動本地計時器和斷線檢測
@@ -642,6 +643,7 @@ class K5Controller extends GetxController
       );
 
       isStart.value = false;
+      gc.isSporting.value = false;
 
       // 🔄 清理本地計時器資源
       _cleanupLocalTimer();

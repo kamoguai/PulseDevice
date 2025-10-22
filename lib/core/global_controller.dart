@@ -140,6 +140,8 @@ class GlobalController extends GetxController {
   ///--- 諮詢暫存輸入字串
   final chatInput = "".obs;
   final chatApiKeyValue = "".obs;
+  final ringSetting = "".obs;
+  final isRingFirstBind = false.obs;
 
   // ✅ 添加事件分發系統
   final Map<String, List<Function(Map)>> _eventHandlers = {};
@@ -220,9 +222,14 @@ class GlobalController extends GetxController {
       print("✅ setupIosMessageChannel called from GlobalController");
     }
 
-    Future.delayed(const Duration(seconds: 10), () {
+    Future.delayed(const Duration(seconds: 12), () {
       /// 🎯 根據需要啟動重連機制
       _startReconnectMechanismIfNeeded();
+      apiService.getRingSetting();
+      if (ringSetting.value.isNotEmpty && blueToolStatus.value == 2) {
+        ycDeviceService.setHealthMonitoring(
+            true, int.tryParse(ringSetting.value) ?? 10);
+      }
     });
   }
 
@@ -709,9 +716,7 @@ class GlobalController extends GetxController {
     startForegroundTask();
     // ✅ 藍牙連上後立即同步一次
     await safeRunSync();
-    // initGoal();
     Future.delayed(const Duration(milliseconds: 500), () {
-      // getGoalTargetData(goalNotificationService);
       _isInitFuncRunning = true;
       NotificationService().showDeviceConnectedNotification();
     });
@@ -797,6 +802,12 @@ class GlobalController extends GetxController {
       ),
       (String taskId) async {
         try {
+          // 🎯 運動狀態檢查
+          if (isSporting.value) {
+            print("🏃‍♂️ 運動中，跳過 BackgroundFetch 同步");
+            BackgroundFetch.finish(taskId);
+            return;
+          }
           final log = "[BackgroundFetch] Event received: $taskId";
           print(log);
           await logToDisk(log);
@@ -829,6 +840,11 @@ class GlobalController extends GetxController {
       return;
     }
     _lastSyncTime = now;
+    // 🎯 運動狀態檢查
+    if (isSporting.value) {
+      print("🏃‍♂️ 正在運動中，跳過背景同步");
+      return;
+    }
     await syncDataService.runBackgroundSync();
     await getBlueToothDeviceInfo();
     isBleDataReady.value = true;

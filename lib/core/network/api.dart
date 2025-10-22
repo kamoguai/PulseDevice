@@ -32,6 +32,7 @@ class Api {
   static const String sleepSet = "userSleep/set";
   static const String seleepGet = "userSleep/get";
   static const String gpsSet = "gpslog/set";
+  static const String getRingSetting = "getPulseRingSetting";
 
   ///-------- aws api 正式機
   // static const String awsUrl =

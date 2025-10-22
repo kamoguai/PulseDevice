@@ -436,8 +436,14 @@ class K73Controller extends GetxController with WidgetsBindingObserver {
   ///刷新按鈕事件
   Future<void> onRefresh() async {
     LoadingHelper.show();
-    await gc.syncDataService.runBackgroundSync();
-    await gc.getBlueToothDeviceInfo();
+
+    /// 如果藍牙連接成功，則同步數據
+    if (gc.blueToolStatus.value == 2) {
+      await gc.syncDataService.runBackgroundSync();
+      await gc.getBlueToothDeviceInfo();
+    }
+
+    /// 刷新健康數據和家族數據
     await getHealthData(
         familyId: gc.familyId.value, familyName: gc.familyName.value);
     await getFamilyData();

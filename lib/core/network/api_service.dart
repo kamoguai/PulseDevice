@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart' as getx;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
@@ -159,6 +160,25 @@ class ApiService {
         }
       ]);
       final res = await postJsonList(Api.logset, params);
+    } catch (e) {}
+  }
+
+  Future<void> getRingSetting() async {
+    try {
+      final gc = getx.Get.find<GlobalController>();
+      final res = await postJson(Api.getRingSetting, {});
+      if (res.isNotEmpty) {
+        if (res["message"] == "SUCCESS") {
+          final data = res["data"];
+          if (data != null && data.isNotEmpty) {
+            final name = data["name"];
+            final settingsValue = data["settingsValue"];
+            if (name.toString().contains("戒指")) {
+              gc.ringSetting.value = settingsValue.toString();
+            }
+          }
+        }
+      }
     } catch (e) {}
   }
 }
