@@ -15,7 +15,7 @@ class Two10Controller extends GetxController {
   final gc = Get.find<GlobalController>();
   final isSelectedSwitch = false.obs;
   // 壓力過高門檻
-  var times = 60.obs;
+  var times = 10.obs;
   var timeMin = 1.obs;
   var timeMax = 60.obs;
   late ListenSetting profile;

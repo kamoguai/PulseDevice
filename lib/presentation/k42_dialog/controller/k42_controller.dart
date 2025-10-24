@@ -51,6 +51,9 @@ class K42Controller extends GetxController {
         gc.ycDeviceService.startReconnectMechanism();
         print("✅ 設備綁定成功，已啟動重連機制");
 
+        /// 設置為第一次綁定
+        gc.isRingFirstBind.value = true;
+
         Future.delayed(const Duration(milliseconds: 500), () {
           goHomePage();
         });

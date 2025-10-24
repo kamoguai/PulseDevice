@@ -401,10 +401,7 @@ class YcDeviceService {
   /// 清除所有藍牙數據
   Future<bool> clearAllBluetoothData() async {
     try {
-      // 先清除裝置排程
-      await clearQueue();
-
-      // 再清除健康數據
+      // 清除健康數據
       await deleteDeviceHealthData(HealthDataType.step);
       await deleteDeviceHealthData(HealthDataType.sleep);
       await deleteDeviceHealthData(HealthDataType.heartRate);
