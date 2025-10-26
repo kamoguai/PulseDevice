@@ -54,11 +54,11 @@ dependencies:
   flutter_markdown: ^0.7.7+1 # Markdown解析
   geolocator: ^14.0.2 # 取得位置資訊
   pedometer: ^4.1.1 # 取得步數資訊
-  # firebase_analytics: ^11.6.0 # Google Tag Manager #ga4
   flutter_datetime_picker_plus: ^2.2.0
   camera: ^0.10.6  # 官方相机库
   photo_manager: ^3.5.0  # 相册管理库
-
+  firebase_analytics: ^11.6.0 # Google Tag Manager #ga4
+  
   yc_product_plugin:  # 戒指sdk
     git:
       url: https://gitee.com/yucheng_3/yc_product_plugin.git

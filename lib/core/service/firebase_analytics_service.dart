@@ -1,4 +1,5 @@
 // import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 
 /// Firebase Analytics 服務 - 混合模式架構
@@ -13,17 +14,17 @@ class FirebaseAnalyticsService {
 
   static FirebaseAnalyticsService get instance => _instance;
 
-  // late FirebaseAnalytics _analytics;
+  late FirebaseAnalytics _analytics;
   bool _isInitialized = false;
 
   /// 初始化 Firebase Analytics
   Future<void> initialize() async {
     try {
-      // _analytics = FirebaseAnalytics.instance;
+      _analytics = FirebaseAnalytics.instance;
       _isInitialized = true;
 
       // 設定分析收集啟用狀態
-      // await _analytics.setAnalyticsCollectionEnabled(true);
+      await _analytics.setAnalyticsCollectionEnabled(true);
 
       if (kDebugMode) {
         print('✅ FirebaseAnalyticsService 初始化成功');
@@ -44,7 +45,7 @@ class FirebaseAnalyticsService {
   Future<void> setUserId(String userId) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.setUserId(id: userId);
+      await _analytics.setUserId(id: userId);
       if (kDebugMode) {
         print('📊 設定用戶 ID: $userId');
       }
@@ -62,7 +63,7 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.setUserProperty(name: name, value: value);
+      await _analytics.setUserProperty(name: name, value: value);
       if (kDebugMode) {
         print('📊 設定用戶屬性: $name = $value');
       }
@@ -83,14 +84,14 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logScreenView(
-      //   screenName: screenName,
-      //   screenClass: screenClass ?? screenName,
-      //   parameters: {
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logScreenView(
+        screenName: screenName,
+        screenClass: screenClass ?? screenName,
+        parameters: {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 [GA4] 頁面瀏覽事件已發送: $screenName');
         print('📊 [GA4] 參數: ${parameters.toString()}');
@@ -111,15 +112,15 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logSelectContent(
-      //   contentType: contentType,
-      //   itemId: contentId,
-      //   parameters: {
-      //     if (contentName != null) 'content_name': contentName,
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logSelectContent(
+        contentType: contentType,
+        itemId: contentId,
+        parameters: {
+          if (contentName != null) 'content_name': contentName,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 [GA4] 內容選擇事件已發送: $contentType - $contentId');
         print('📊 [GA4] 參數: ${parameters.toString()}');
@@ -138,13 +139,13 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logSearch(
-      //   searchTerm: searchTerm,
-      //   parameters: {
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logSearch(
+        searchTerm: searchTerm,
+        parameters: {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 記錄搜尋: $searchTerm');
       }
@@ -162,13 +163,13 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logLogin(
-      //   loginMethod: loginMethod ?? 'unknown',
-      //   parameters: {
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logLogin(
+        loginMethod: loginMethod ?? 'unknown',
+        parameters: {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 記錄登入事件: $loginMethod');
       }
@@ -186,13 +187,13 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logSignUp(
-      //   signUpMethod: signUpMethod ?? 'unknown',
-      //   parameters: {
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logSignUp(
+        signUpMethod: signUpMethod ?? 'unknown',
+        parameters: {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 記錄註冊事件: $signUpMethod');
       }
@@ -240,15 +241,15 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logEvent(
-      //   name: 'feature_usage',
-      //   parameters: {
-      //     'feature_name': featureName,
-      //     'action': action ?? 'use',
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logEvent(
+        name: 'feature_usage',
+        parameters: {
+          'feature_name': featureName,
+          'action': action ?? 'use',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 記錄功能使用: $featureName - $action');
       }
@@ -762,13 +763,13 @@ class FirebaseAnalyticsService {
   }) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.logEvent(
-      //   name: eventName,
-      //   parameters: {
-      //     'timestamp': DateTime.now().millisecondsSinceEpoch,
-      //     ...?parameters,
-      //   },
-      // );
+      await _analytics.logEvent(
+        name: eventName,
+        parameters: {
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          ...?parameters,
+        },
+      );
       if (kDebugMode) {
         print('📊 記錄自訂事件: $eventName');
       }
@@ -783,7 +784,7 @@ class FirebaseAnalyticsService {
   Future<void> setAnalyticsCollectionEnabled(bool enabled) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.setAnalyticsCollectionEnabled(enabled);
+      await _analytics.setAnalyticsCollectionEnabled(enabled);
       if (kDebugMode) {
         print('📊 設定分析收集: $enabled');
       }
@@ -798,7 +799,7 @@ class FirebaseAnalyticsService {
   Future<void> setDefaultEventParameters(Map<String, Object> parameters) async {
     if (!_isInitialized) return;
     try {
-      // await _analytics.setDefaultEventParameters(parameters);
+      await _analytics.setDefaultEventParameters(parameters);
       if (kDebugMode) {
         print('📊 設定預設事件參數');
       }
