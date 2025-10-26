@@ -53,7 +53,7 @@ dependencies:
   flutter_markdown: ^0.7.7+1 # Markdown解析
   geolocator: ^14.0.2 # 取得位置資訊
   pedometer: ^4.1.1 # 取得步數資訊
-  # firebase_analytics: ^11.6.0 # Google Tag Manager #ga4
+  firebase_analytics: ^11.6.0 # Google Tag Manager #ga4
   
   yc_product_plugin:  # 戒指sdk
     git:
