@@ -118,7 +118,7 @@ class K82Controller extends GetxController with WidgetsBindingObserver {
         "type": "sleep"
       };
       final res = await apiService.postJson(Api.healthRecordList, payload);
-      final details = await apiService.postJson(Api.seleepGet, payload);
+      final details = await apiService.postJson(Api.getNewSleep, payload);
       if (isLoading) {
         LoadingHelper.hide();
       }
@@ -144,8 +144,6 @@ class K82Controller extends GetxController with WidgetsBindingObserver {
           0,
           (sum, item) => sum + (item.endTimestamp - item.startTimestamp),
         );
-        sleepVal.value =
-            (totalSleepSeconds / 3600).toStringAsFixed(1); // 單位小時顯示
 
         final deepSleepSeconds = parsed.fold<int>(
           0,
@@ -173,13 +171,23 @@ class K82Controller extends GetxController with WidgetsBindingObserver {
         awake.value =
             DateTimeUtils.formatSecondsToHourDecimal(awakSleepSeconds);
 
+        sleepVal.value = ((deepSleepSeconds +
+                    lightSleepSeconds +
+                    remSleepSeconds +
+                    awakSleepSeconds) /
+                3600)
+            .toStringAsFixed(1);
+
         deepCount.value = parsed.where((e) => e.deep.isNotEmpty).length;
         lightCount.value = parsed.where((e) => e.light.isNotEmpty).length;
         remCount.value = parsed.where((e) => e.rem.isNotEmpty).length;
 
         /// 排除awake為0的資料，因為戒指不一定會有給資料
-        awakeCount.value =
-            parsed.where((e) => e.awake.isNotEmpty && e.awake != '0').length;
+        if (parsed.length > 0) {
+          awakeCount.value = parsed.length - 1;
+        } else {
+          awakeCount.value = 0;
+        }
 
         /// 如果detail response有資料，則用detail api數據畫圖
         if (details.isNotEmpty &&
@@ -197,8 +205,9 @@ class K82Controller extends GetxController with WidgetsBindingObserver {
           lightCount.value =
               parsedDetail.where((e) => e.sleepType == 242).length;
           remCount.value = parsedDetail.where((e) => e.sleepType == 243).length;
-          awakeCount.value =
-              parsedDetail.where((e) => e.sleepType == 244).length;
+          parsedDetail
+              .sort((a, b) => a.startTimestamp.compareTo(b.startTimestamp));
+
           //   /// 直接將detail數據轉為橫條圖
           for (var dic in parsedDetail) {
             switch (dic.sleepType) {

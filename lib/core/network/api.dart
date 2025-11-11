@@ -33,6 +33,29 @@ class Api {
   static const String seleepGet = "userSleep/get";
   static const String gpsSet = "gpslog/set";
   static const String getRingSetting = "getPulseRingSetting";
+  static const String userFoodRecords = "userFoodRecords/gpt/set";
+  static const String getNewSleep = "userSleep/get/new";
+
+  ///取得體脂秤認領數據
+  static const String getBodyTemp = "bodyComposition/temp/get";
+
+  ///設定體脂秤認領數據
+  static const String setBodyTemp = "bodyComposition/temp/set";
+
+  ///認領取得設定體脂秤
+  static const String getClaimSetting = "claim/get";
+
+  ///認領設定體脂秤
+  static const String setClaimSetting = "claim/set";
+
+  ///體脂秤所有數據寫入
+  static const String setBodyComposition = "bodyComposition/set";
+
+  ///-------- 體脂機廠商api
+  static const String ppUrl = "https://uniquehealth.lefuenergy.com";
+  static const String getppToken = "/openapi/user/refreshToken";
+  static const String getppBodyData =
+      "/openapi-bodydata/bodyData/V1_7_1/getAcLfBodyData8";
 
   ///-------- aws api 正式機
   static const String awsUrl =
